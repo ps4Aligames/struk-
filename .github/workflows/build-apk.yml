@@ -1,15 +1,16 @@
 name: Build APK
 
 on:
-  push:
-    branches: [ "main", "master" ]
-  pull_request:
   workflow_dispatch:
+  push:
+    branches: [ main, master ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    env:
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_HOME: /usr/local/lib/android/sdk
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,28 +20,49 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
+      - name: Prepare Android SDK
+        shell: bash
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          set -euxo pipefail
+          SDK="$ANDROID_SDK_ROOT"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          mkdir -p "$SDK/licenses"
+          SDKMANAGER="$(find "$SDK/cmdline-tools" -type f -name sdkmanager -print -quit 2>/dev/null || true)"
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$SDK" -type f -name sdkmanager -print -quit 2>/dev/null || true)"
+          fi
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager tidak ditemukan di runner GitHub."
+            exit 1
+          fi
+          SDKMANAGER_DIR="$(dirname "$SDKMANAGER")"
+          echo "$SDKMANAGER_DIR" >> "$GITHUB_PATH"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          yes | "$SDKMANAGER" --sdk_root="$SDK" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Install Gradle 8.7
+      - name: Download Gradle 8.7
+        shell: bash
         run: |
-          curl -fsSL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip
-          sudo unzip -q /tmp/gradle.zip -d /opt
-          echo "/opt/gradle-8.7/bin" >> "$GITHUB_PATH"
-          gradle --version
+          set -euxo pipefail
+          curl -L --fail --retry 3 -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip
+          rm -rf "$HOME/.gradle-dist"
+          mkdir -p "$HOME/.gradle-dist"
+          unzip -q /tmp/gradle.zip -d "$HOME/.gradle-dist"
 
       - name: Build debug APK
-        run: gradle --no-daemon assembleDebug
+        working-directory: ali_games_service_android
+        shell: bash
+        run: |
+          set -euxo pipefail
+          "$HOME/.gradle-dist/gradle-8.7/bin/gradle" assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: AliGamesService-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: ali_games_service_android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
