@@ -1,0 +1,30 @@
+# Android / Gradle
+.gradle/
+/build/
+*/build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Android Studio / IntelliJ
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/misc.xml
+.idea/deploymentTargetDropDown.xml
+.idea/.name
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keystores / signing secrets
+*.jks
+*.keystore
+
+# Generated APK/AAB
+*.apk
+*.aab

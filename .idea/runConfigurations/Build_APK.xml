@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" type="GradleRunConfiguration" factoryName="Gradle">
+    <ExternalSystemSettings>
+      <option name="executionName" value="assembleDebug" />
+      <option name="externalProjectPath" value="$PROJECT_DIR$" />
+      <option name="taskNames"><list><option value="assembleDebug" /></list></option>
+    </ExternalSystemSettings>
+    <GradleScriptType>DEFAULT</GradleScriptType>
+    <method v="2" />
+  </configuration>
+</component>
