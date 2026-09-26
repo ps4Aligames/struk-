@@ -1,68 +1,51 @@
-name: Build APK
+name: Build Android APK
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-      ANDROID_HOME: /usr/local/lib/android/sdk
+
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
           java-version: '17'
-          cache: gradle
+          distribution: 'temurin'
 
-      - name: Prepare Android SDK
-        shell: bash
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant Execute Permission for Gradlew
         run: |
-          set -euxo pipefail
-          SDK="$ANDROID_SDK_ROOT"
-          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
-          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
-          mkdir -p "$SDK/licenses"
-          SDKMANAGER="$(find "$SDK/cmdline-tools" -type f -name sdkmanager -print -quit 2>/dev/null || true)"
-          if [ -z "$SDKMANAGER" ]; then
-            SDKMANAGER="$(find "$SDK" -type f -name sdkmanager -print -quit 2>/dev/null || true)"
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew
+          elif [ -f "ali_games_service_android/gradlew" ]; then
+            chmod +x ali_games_service_android/gradlew
           fi
-          if [ -z "$SDKMANAGER" ]; then
-            echo "sdkmanager tidak ditemukan di runner GitHub."
-            exit 1
+
+      - name: Build Debug APK
+        run: |
+          if [ -f "gradlew" ]; then
+            ./gradlew assembleDebug
+          elif [ -f "ali_games_service_android/gradlew" ]; then
+            cd ali_games_service_android && ./gradlew assembleDebug
+          else
+            echo "Gradlew tidak ditemukan. Menggunakan Gradle bawaan sistem..."
+            gradle assembleDebug
           fi
-          SDKMANAGER_DIR="$(dirname "$SDKMANAGER")"
-          echo "$SDKMANAGER_DIR" >> "$GITHUB_PATH"
-          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
-          yes | "$SDKMANAGER" --sdk_root="$SDK" --licenses >/dev/null || true
-          "$SDKMANAGER" --sdk_root="$SDK" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Download Gradle 8.7
-        shell: bash
-        run: |
-          set -euxo pipefail
-          curl -L --fail --retry 3 -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip
-          rm -rf "$HOME/.gradle-dist"
-          mkdir -p "$HOME/.gradle-dist"
-          unzip -q /tmp/gradle.zip -d "$HOME/.gradle-dist"
-
-      - name: Build debug APK
-        working-directory: ali_games_service_android
-        shell: bash
-        run: |
-          set -euxo pipefail
-          "$HOME/.gradle-dist/gradle-8.7/bin/gradle" assembleDebug --no-daemon --stacktrace
-
-      - name: Upload APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AliGamesService-debug-apk
-          path: ali_games_service_android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          name: app-debug-apk
+          path: |
+            **/build/outputs/apk/debug/*.apk
