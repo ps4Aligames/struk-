@@ -1,0 +1,17 @@
+{
+  "name": "Ali Games Service",
+  "short_name": "Ali Games",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "description": "Bon tanda terima service Ali Games",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
